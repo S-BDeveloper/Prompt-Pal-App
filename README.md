@@ -383,16 +383,3 @@ git push origin --delete feature/your-awesome-feature
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- **Google AI**: For Gemini 1.5 Pro, Imagen, Vision, and Nano APIs powering all AI features across image generation, code analysis, and copywriting evaluation
-- **Expo Team**: For the incredible React Native development platform enabling cross-platform deployment
-- **React Native Community**: For the amazing ecosystem of libraries and the gesture handler, reanimated, and secure store integrations
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/username/promptpal/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/username/promptpal/discussions)
-- **Email**: support@promptpal.game
-
----
