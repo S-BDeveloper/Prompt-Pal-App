@@ -22,7 +22,7 @@ An innovative multi-module mobile game that teaches players to craft perfect AI 
 - **🎯 Module Filtering**: Switch between Image, Code, and Copywriting challenges
 
 ### 🚀 Upcoming Features (Phase 2-5)
-- **🤖 Real Gemini API**: Integration with Google's Gemini 1.5 Pro, Imagen, and Vision models
+- **🤖 Real Gemini API**: Integration with Google's Gemini 2.5 Flash (text/vision) and Gemini 2.5 Flash Image (images)
 - **🧠 "Nano Banana"**: Local Gemini Nano AI assistance on supported Android devices
 - **💻 Code Execution Engine**: Sandbox environment for testing generated code
 - **📝 Content Analysis AI**: Advanced copywriting evaluation and feedback
