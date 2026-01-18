@@ -69,17 +69,13 @@ const ModuleCard = ({
       <View className={`absolute top-4 left-4 w-12 h-12 rounded-2xl items-center justify-center ${accentColor}`}>
         <Ionicons name={icon} size={24} color="white" />
       </View>
-      {/* Decorative Swirl/Pattern - using absolute circles as a simple replacement for images */}
-      <View className={`w-32 h-32 rounded-full border-4 ${accentColor.replace('bg-', 'border-')}/20 absolute`} style={{ transform: [{ scale: 1.5 }] }} />
-      <View className={`w-24 h-24 rounded-full border-4 ${accentColor.replace('bg-', 'border-')}/30 absolute`} style={{ transform: [{ scale: 1.2 }] }} />
-      <View className={`w-16 h-16 rounded-full border-4 ${accentColor.replace('bg-', 'border-')}/40 absolute`} />
     </View>
     
     <View className="p-6">
       <Text className={`text-[10px] font-extrabold uppercase mb-2 tracking-widest ${accentColor.replace('bg-', 'text-')}`}>
         {category}
       </Text>
-      <Text className="text-white text-2xl font-bold mb-4">{title}</Text>
+      <Text className="text-onSurface text-2xl font-bold mb-4">{title}</Text>
       
       <View className="flex-row justify-between items-center mb-3">
         <Text className="text-onSurfaceVariant text-xs font-semibold">{level}: {topic}</Text>
@@ -176,7 +172,7 @@ export default function HomeScreen() {
               </View>
               <View>
                 <Text className="text-onSurfaceVariant text-[10px] font-bold uppercase tracking-widest mb-0.5">Good Morning</Text>
-                <Text className="text-white text-lg font-bold">
+                <Text className="text-onSurface text-lg font-bold">
                   {user?.firstName || "Alex"} {user?.lastName || "Prompt"}
                 </Text>
               </View>
@@ -202,7 +198,7 @@ export default function HomeScreen() {
           {/* Overall Mastery */}
           <View className="px-6 mb-10">
             <View className="flex-row justify-between items-center mb-2.5">
-              <Text className="text-white text-xs font-bold uppercase tracking-widest">Overall Mastery</Text>
+              <Text className="text-onSurface text-xs font-bold uppercase tracking-widest">Overall Mastery</Text>
               <Text className="text-onSurfaceVariant text-xs font-bold">2,450 / 3,000 XP</Text>
             </View>
             <View className="h-1.5 bg-surfaceVariant rounded-full overflow-hidden">
@@ -218,7 +214,7 @@ export default function HomeScreen() {
           {/* Learning Modules Section */}
           <View className="px-6 pb-20">
             <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-white text-xl font-bold">Learning Modules</Text>
+              <Text className="text-onSurface text-xl font-bold">Learning Modules</Text>
               <TouchableOpacity>
                 <Text className="text-primary text-sm font-bold">View All</Text>
               </TouchableOpacity>
@@ -231,7 +227,7 @@ export default function HomeScreen() {
         </ScrollView>
         
         {/* Mock Bottom Tab Bar - Since we can't easily change the real tab bar here without layout edits */}
-        <View className="absolute bottom-0 left-0 right-0 h-24 bg-[#0F0F0F]/95 border-t border-outline/20 flex-row justify-around items-center px-4 pb-6">
+        <View className="absolute bottom-0 left-0 right-0 h-24 bg-background/95 border-t border-outline/20 flex-row justify-around items-center px-4 pb-6">
           <View className="items-center">
             <Ionicons name="home" size={24} color="#FF6B00" />
             <Text className="text-primary text-[10px] font-bold mt-1">Home</Text>
@@ -253,12 +249,8 @@ export default function HomeScreen() {
 
       <SignedOut>
         <ScrollView className="flex-1 bg-background" contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-          {/* Hero Section with Decorative Background */}
+          {/* Hero Section */}
           <View className="h-[60%] justify-center items-center px-6 relative">
-            {/* Background Decorative Circles */}
-            <View className="absolute top-[-50] right-[-50] w-64 h-64 rounded-full bg-primary/10" />
-            <View className="absolute bottom-20 left-[-80] w-80 h-80 rounded-full bg-secondary/5" />
-            
             <View className="items-center z-10">
               <View className="w-24 h-24 bg-surfaceVariant/50 rounded-[32px] items-center justify-center mb-8 border border-outline/20">
                 <Ionicons name="flash" size={48} color="#FF6B00" />
@@ -269,7 +261,7 @@ export default function HomeScreen() {
                 <Text className="text-secondary text-6xl font-bold tracking-tight">Pal</Text>
               </View>
               
-              <Text className="text-white text-2xl font-bold text-center mb-4 px-4 leading-8">
+              <Text className="text-onSurface text-2xl font-bold text-center mb-4 px-4 leading-8">
                 Master the Art of{'\n'}AI Prompt Engineering
               </Text>
               
@@ -281,12 +273,11 @@ export default function HomeScreen() {
 
           {/* Feature Highlights */}
           <View className="px-6 py-10 bg-surface/30 rounded-t-[40px] flex-1">
-            <View className="flex-row flex-wrap justify-between mb-10">
               <View className="w-[48%] bg-surfaceVariant/40 p-5 rounded-3xl mb-4 border border-outline/10">
                 <View className="w-10 h-10 bg-primary/20 rounded-xl items-center justify-center mb-4">
                   <Ionicons name="game-controller" size={20} color="#FF6B00" />
                 </View>
-                <Text className="text-white font-bold text-sm mb-1">Gamified</Text>
+                <Text className="text-onSurface font-bold text-sm mb-1">Gamified</Text>
                 <Text className="text-onSurfaceVariant text-[10px] leading-4">Progressive levels and rewarding challenges.</Text>
               </View>
               
@@ -294,7 +285,7 @@ export default function HomeScreen() {
                 <View className="w-10 h-10 bg-info/20 rounded-xl items-center justify-center mb-4">
                   <Ionicons name="rocket" size={20} color="#4151FF" />
                 </View>
-                <Text className="text-white font-bold text-sm mb-1">Real-time</Text>
+                <Text className="text-onSurface font-bold text-sm mb-1">Real-time</Text>
                 <Text className="text-onSurfaceVariant text-[10px] leading-4">Instant AI feedback on your prompt quality.</Text>
               </View>
 
@@ -302,7 +293,7 @@ export default function HomeScreen() {
                 <View className="w-10 h-10 bg-success/20 rounded-xl items-center justify-center mb-4">
                   <Ionicons name="trophy" size={20} color="#10B981" />
                 </View>
-                <Text className="text-white font-bold text-sm mb-1">Mastery</Text>
+                <Text className="text-onSurface font-bold text-sm mb-1">Mastery</Text>
                 <Text className="text-onSurfaceVariant text-[10px] leading-4">Track your growth with XP and skill streaks.</Text>
               </View>
 
@@ -310,7 +301,7 @@ export default function HomeScreen() {
                 <View className="w-10 h-10 bg-accent/20 rounded-xl items-center justify-center mb-4">
                   <Ionicons name="create" size={20} color="#F59E0B" />
                 </View>
-                <Text className="text-white font-bold text-sm mb-1">Creative</Text>
+                <Text className="text-onSurface font-bold text-sm mb-1">Creative</Text>
                 <Text className="text-onSurfaceVariant text-[10px] leading-4">Daily quests to spark your prompt imagination.</Text>
               </View>
             </View>

@@ -4,7 +4,7 @@
     "slug": "PromptPal",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "scheme": "promptpal",
     "ios": {
       "supportsTablet": true

@@ -134,11 +134,11 @@ export default function SignUpScreen() {
               <View className="w-16 h-16 bg-info/10 rounded-2xl items-center justify-center mb-6 border border-info/20">
                 <Ionicons name="mail-unread" size={32} color="#4151FF" />
               </View>
-              <Text className="text-white text-3xl font-bold mb-3 tracking-tight">
+              <Text className="text-onSurface text-3xl font-bold mb-3 tracking-tight">
                 Verify Email
               </Text>
               <Text className="text-onSurfaceVariant text-center text-base px-10">
-                We've sent a 6-digit code to{'\n'}<Text className="text-white font-bold">{emailAddress}</Text>
+                We've sent a 6-digit code to{'\n'}<Text className="text-onSurface font-bold">{emailAddress}</Text>
               </Text>
             </View>
 
@@ -156,7 +156,7 @@ export default function SignUpScreen() {
                 <Text className="text-onSurfaceVariant text-xs font-bold uppercase mb-4 ml-1 tracking-wider text-center">Enter 6-Digit Code</Text>
                 <View className={`bg-surfaceVariant/50 border ${errors.code ? 'border-error' : 'border-outline/30'} rounded-2xl px-4 py-5 items-center`}>
                   <TextInput
-                    className="text-white text-4xl font-bold tracking-[10px] text-center w-full"
+                    className="text-onSurface text-4xl font-bold tracking-[10px] text-center w-full"
                     value={code}
                     onChangeText={(text) => {
                       setCode(text.replace(/[^0-9]/g, '').slice(0, 6))
@@ -202,16 +202,12 @@ export default function SignUpScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
       >
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-          showsVerticalScrollIndicator={false}
-          className="px-6"
-        >
-          {/* Decorative Background Elements */}
-          <View className="absolute top-0 left-0 w-40 h-40 bg-secondary/5 rounded-full" />
-          <View className="absolute bottom-20 right-[-20] w-60 h-60 bg-primary/5 rounded-full" />
-
-          {/* Header */}
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+            showsVerticalScrollIndicator={false}
+            className="px-6"
+          >
+            {/* Header */}
           <View className="items-center mb-10">
             <View className="w-16 h-16 bg-secondary/10 rounded-2xl items-center justify-center mb-6 border border-secondary/20">
               <Ionicons name="person-add" size={32} color="#4151FF" />
@@ -227,7 +223,7 @@ export default function SignUpScreen() {
 
           {/* Sign Up Form */}
           <View className="bg-surface border border-outline/20 rounded-[32px] p-8 shadow-2xl shadow-black/50 mb-8">
-            <Text className="text-white text-2xl font-bold mb-8 text-center">
+            <Text className="text-onSurface text-2xl font-bold mb-8 text-center">
               Sign Up
             </Text>
 
@@ -245,7 +241,7 @@ export default function SignUpScreen() {
                 <View className={`bg-surfaceVariant/50 border ${errors.email ? 'border-error' : 'border-outline/30'} rounded-2xl px-4 py-4 flex-row items-center`}>
                   <Ionicons name="mail-outline" size={20} color={errors.email ? "#EF4444" : "#9CA3AF"} />
                   <TextInput
-                    className="flex-1 ml-3 text-white text-base"
+                    className="flex-1 ml-3 text-onSurface text-base"
                     value={emailAddress}
                     onChangeText={(text) => {
                       setEmailAddress(text)
@@ -265,7 +261,7 @@ export default function SignUpScreen() {
                 <View className={`bg-surfaceVariant/50 border ${errors.password ? 'border-error' : 'border-outline/30'} rounded-2xl px-4 py-4 flex-row items-center`}>
                   <Ionicons name="key-outline" size={20} color={errors.password ? "#EF4444" : "#9CA3AF"} />
                   <TextInput
-                    className="flex-1 ml-3 text-white text-base"
+                    className="flex-1 ml-3 text-onSurface text-base"
                     value={password}
                     onChangeText={(text) => {
                       setPassword(text)

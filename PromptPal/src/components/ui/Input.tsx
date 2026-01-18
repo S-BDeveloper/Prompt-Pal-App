@@ -52,11 +52,11 @@ export function Input({
           style={{
             paddingHorizontal: 16,
             paddingVertical: 12,
-            color: '#F5F5F5',
             fontSize: 16,
             textAlignVertical: multiline ? 'top' : 'center',
             minHeight: multiline ? 100 : 48
           }}
+          className="text-onSurface"
         />
       </View>
       {error && (
