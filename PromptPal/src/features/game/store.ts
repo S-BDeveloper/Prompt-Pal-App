@@ -127,12 +127,11 @@ export const useGameStore = create<GameState>()(
       name: 'promptpal-game-storage',
       storage: createJSONStorage(() => secureStorage),
       // Add error handling for corrupted storage
-      onRehydrateStorage: () => (state) => {
-        // If state is undefined or corrupted, reset to initial state
-        if (!state || typeof state !== 'object') {
-          console.warn('Game store corrupted, resetting to initial state');
-          set(initialState);
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.warn('Game store rehydration error:', error);
         }
+        // If state is undefined or corrupted, it will use initial state automatically
       },
     }
   )

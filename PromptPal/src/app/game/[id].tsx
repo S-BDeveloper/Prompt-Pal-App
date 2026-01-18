@@ -3,7 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Button, Input } from '../../components/ui';
 import { getLevelById } from '../../features/levels/data';
-import { geminiService } from '../../lib/gemini';
+import { AIProxyClient } from '../../../lib/aiProxy';
+import { UsageClient } from '../../../lib/usage';
 import { useGameStore } from '../../features/game/store';
 
 export default function GameScreen() {
@@ -41,11 +42,11 @@ export default function GameScreen() {
 
     setIsGenerating(true);
     try {
-      const imageUrl = await geminiService.generateImage(prompt);
-      setGeneratedImage(imageUrl);
+      const result = await AIProxyClient.generateImage(prompt);
+      setGeneratedImage(result.imageUrl!);
 
-      // Simulate scoring (Phase 2 will implement real scoring)
-      const score = await geminiService.compareImages(level.targetImageUrl, imageUrl);
+      // For now, use a simple scoring mechanism (Phase 3 will implement real AI comparison)
+      const score = Math.floor(Math.random() * 41) + 60; // Random score between 60-100
 
       Alert.alert(
         'Result',
@@ -65,8 +66,12 @@ export default function GameScreen() {
           },
         ]
       );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate image. Please try again.');
+    } catch (error: any) {
+      if (error.response?.status === 429) {
+        Alert.alert('Quota Exceeded', 'You\'ve reached your usage limit. Upgrade to Pro for more calls.');
+      } else {
+        Alert.alert('Error', 'Failed to generate image. Please try again.');
+      }
     } finally {
       setIsGenerating(false);
     }
