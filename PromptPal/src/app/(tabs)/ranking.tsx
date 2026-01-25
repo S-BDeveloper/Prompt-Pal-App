@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/ui';
 import { ApiClient, LeaderboardUser } from '@/lib/api';
@@ -10,6 +11,7 @@ const { width } = Dimensions.get('window');
 
 export default function RankingScreen() {
   const router = useRouter();
+  const { isLoaded, isSignedIn } = useAuth();
   const [activeTab, setActiveTab] = useState<'global' | 'friends'>('global');
   const [topWinners, setTopWinners] = useState<LeaderboardUser[]>([]);
   const [rankList, setRankList] = useState<LeaderboardUser[]>([]);
@@ -62,8 +64,10 @@ export default function RankingScreen() {
       }
     };
 
-    fetchLeaderboardData();
-  }, []);
+    if (isLoaded && isSignedIn) {
+      fetchLeaderboardData();
+    }
+  }, [isLoaded, isSignedIn]);
 
   const renderWinner = (user: LeaderboardUser, type: 'gold' | 'silver' | 'bronze') => {
     const isGold = type === 'gold';

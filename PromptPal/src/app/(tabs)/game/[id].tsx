@@ -1,4 +1,4 @@
-import { View, Text, Image, Alert, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, Image, Alert, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Keyboard, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useMemo } from 'react';
@@ -277,16 +277,12 @@ export default function GameScreen() {
           multiline
           className="text-lg text-onSurface min-h-[120px] bg-transparent border-0 p-0 mb-4"
         />
-        
-        <View className="flex-row justify-between items-center">
+
+        <View className="flex-row items-center">
           <View className="flex-row">
             <Badge label={`${charCount} chars`} variant="surface" className="bg-surfaceVariant mr-2 border-0 px-3" />
             <Badge label={`${tokenCount} tokens`} variant="surface" className="bg-surfaceVariant mr-2 border-0 px-3" />
             {level.type === 'image' && <Badge label={level.style || ''} variant="primary" className="bg-primary/20 border-0 px-3" />}
-          </View>
-          
-          <View className="bg-onSurfaceVariant/20 px-2 py-1 rounded-md">
-            <Text className="text-onSurfaceVariant text-[8px] font-bold uppercase">CMD + ENTER</Text>
           </View>
         </View>
       </Card>
@@ -332,17 +328,27 @@ export default function GameScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
       {renderHeader()}
-      
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {level.type === 'image' && renderImageChallenge()}
-        {level.type === 'code' && renderCodeChallenge()}
-        {level.type === 'copywriting' && renderCopywritingChallenge()}
-        
-        {renderPromptSection()}
-        {renderFeedbackSection()}
-      </ScrollView>
+
+      <Pressable onPress={() => Keyboard.dismiss()} style={{ flex: 1 }}>
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {level.type === 'image' && renderImageChallenge()}
+          {level.type === 'code' && renderCodeChallenge()}
+          {level.type === 'copywriting' && renderCopywritingChallenge()}
+
+          {renderPromptSection()}
+          {renderFeedbackSection()}
+        </ScrollView>
+      </Pressable>
 
       <ResultModal
         visible={showResult}
@@ -356,6 +362,6 @@ export default function GameScreen() {
         }}
         onClose={() => setShowResult(false)}
       />
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }

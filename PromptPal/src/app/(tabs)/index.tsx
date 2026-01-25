@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, useUser, useAuth } from '@clerk/clerk-expo'
+import { useUser, useAuth } from '@clerk/clerk-expo'
 import { Link } from 'expo-router'
 import { Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -163,14 +163,15 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const { unlockedLevels } = useGameStore();
-  const { level, xp, currentStreak, learningModules, currentQuest } = useUserProgressStore();
+  const { level, xp, currentStreak, learningModules, currentQuest, loadFromBackend } = useUserProgressStore();
   const overallProgress = getOverallProgress(xp);
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
       loadUsage();
+      loadFromBackend();
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, loadFromBackend]);
 
   const loadUsage = async () => {
     try {
@@ -185,207 +186,124 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <SignedIn>
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-          {/* Top Profile Header */}
-          <View className="px-6 pt-4 pb-6 flex-row justify-between items-center">
-            <View className="flex-row items-center">
-              <View className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/50 items-center justify-center overflow-hidden mr-3">
-                {user?.imageUrl ? (
-                  <Image source={{ uri: user.imageUrl }} className="w-full h-full" />
-                ) : (
-                  <Ionicons name="person" size={24} color="#FF6B00" />
-                )}
-              </View>
-              <View>
-                <Text className="text-onSurfaceVariant text-[8px] font-black uppercase tracking-[3px] mb-0.5">Good Morning</Text>
-                <Text className="text-onSurface text-xl font-black">
-                  {user?.firstName || "Alex"} {user?.lastName || "Prompt"}
-                </Text>
-              </View>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Top Profile Header */}
+        <View className="px-6 pt-4 pb-6 flex-row justify-between items-center">
+          <View className="flex-row items-center">
+            <View className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary/50 items-center justify-center overflow-hidden mr-3">
+              {user?.imageUrl ? (
+                <Image source={{ uri: user.imageUrl }} className="w-full h-full" />
+              ) : (
+                <Ionicons name="person" size={24} color="#FF6B00" />
+              )}
             </View>
-            <View className="flex-row">
-              <TouchableOpacity
-                className="w-10 h-10 rounded-full bg-surfaceVariant/50 items-center justify-center mr-2"
-                onPress={() => Alert.alert('Notifications', 'No new notifications')}
-              >
-                <Ionicons name="notifications-outline" size={20} color="#6B7280" />
-                <View className="absolute top-2.5 right-3 w-2 h-2 bg-error rounded-full border border-background" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="w-10 h-10 rounded-full bg-surfaceVariant/50 items-center justify-center"
-                onPress={() => setSettingsModalVisible(true)}
-              >
-                <Ionicons name="settings-outline" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Stats Bar */}
-          <View className="px-5 flex-row mb-8">
-            <StatCard label="Level" value={level.toString()} icon="trophy-outline" color="#FF6B00" />
-            <StatCard label="XP" value={xp.toLocaleString()} icon="flash-outline" color="#4151FF" />
-            <StatCard label="Streak" value={currentStreak.toString()} icon="flame-outline" color="#F59E0B" />
-          </View>
-
-          {/* Overall Mastery */}
-          <View className="px-6 mb-10">
-            <View className="flex-row justify-between items-center mb-2.5">
-              <Text className="text-onSurface text-[10px] font-black uppercase tracking-[2px]">Overall Mastery</Text>
-              <Text className="text-onSurfaceVariant text-xs font-black">
-                {overallProgress.current} / {overallProgress.total} XP
-              </Text>
-            </View>
-            <View className="h-2 bg-surfaceVariant rounded-full overflow-hidden">
-              <View className="h-full bg-info rounded-full" style={{ width: `${overallProgress.percentage}%` }} />
-            </View>
-          </View>
-
-          {/* Daily Quest */}
-          {currentQuest && (
-            <View className="px-6">
-              <QuestCard quest={currentQuest} />
-            </View>
-          )}
-
-          {/* Learning Modules Section */}
-          <View className="px-6 pb-20">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-onSurface text-2xl font-black tracking-tight">Learning Modules</Text>
-              <TouchableOpacity>
-                <Text className="text-primary text-xs font-black uppercase tracking-widest">View All</Text>
-              </TouchableOpacity>
-            </View>
-
-            {learningModules?.map((module) => (
-              <ModuleCard key={module.id} {...module} />
-            )) ?? null}
-          </View>
-        </ScrollView>
-
-        {/* Settings Modal */}
-        <Modal
-          visible={settingsModalVisible}
-          onClose={() => setSettingsModalVisible(false)}
-          title="Settings"
-          size="sm"
-        >
-          <View className="space-y-4">
-            <View className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
-              <Ionicons name="person-circle-outline" size={24} color="#6B7280" />
-              <View className="ml-3 flex-1">
-                <Text className="text-onSurface font-semibold">{user?.firstName || "User"} {user?.lastName || ""}</Text>
-                <Text className="text-onSurfaceVariant text-sm">{user?.primaryEmailAddress?.emailAddress}</Text>
-              </View>
-            </View>
-
-            <View className="space-y-2">
-              <TouchableOpacity className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
-                <Ionicons name="notifications-outline" size={20} color="#6B7280" />
-                <Text className="text-onSurface ml-3 flex-1">Notifications</Text>
-                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-
-              <TouchableOpacity className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
-                <Ionicons name="help-circle-outline" size={20} color="#6B7280" />
-                <Text className="text-onSurface ml-3 flex-1">Help & Support</Text>
-                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-
-              <TouchableOpacity className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
-                <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
-                <Text className="text-onSurface ml-3 flex-1">About</Text>
-                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-
-            <View className="pt-4 border-t border-outline/20">
-              <SignOutButton />
-            </View>
-          </View>
-        </Modal>
-      </SignedIn>
-
-      <SignedOut>
-        <ScrollView className="flex-1 bg-background" contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-          {/* Hero Section */}
-          <View className="h-[60%] justify-center items-center px-6 relative">
-            <View className="items-center z-10">
-              <View className="w-24 h-24 bg-surfaceVariant/50 rounded-[32px] items-center justify-center mb-8 border border-outline/20">
-                <Ionicons name="flash" size={48} color="#FF6B00" />
-              </View>
-              
-              <View className="flex-row items-center mb-4">
-                <Text className="text-primary text-6xl font-bold tracking-tight">Prompt</Text>
-                <Text className="text-secondary text-6xl font-bold tracking-tight">Pal</Text>
-              </View>
-              
-              <Text className="text-onSurface text-2xl font-bold text-center mb-4 px-4 leading-8">
-                Master the Art of{'\n'}AI Prompt Engineering
-              </Text>
-              
-              <Text className="text-onSurfaceVariant text-base text-center leading-6 px-10">
-                Level up your AI skills through immersive challenges, real-time feedback, and creative quests.
+            <View>
+              <Text className="text-onSurfaceVariant text-[8px] font-black uppercase tracking-[3px] mb-0.5">Good Morning</Text>
+              <Text className="text-onSurface text-xl font-black">
+                {user?.firstName || "Alex"} {user?.lastName || "Prompt"}
               </Text>
             </View>
           </View>
+          <View className="flex-row">
+            <TouchableOpacity
+              className="w-10 h-10 rounded-full bg-surfaceVariant/50 items-center justify-center mr-2"
+              onPress={() => Alert.alert('Notifications', 'No new notifications')}
+            >
+              <Ionicons name="notifications-outline" size={20} color="#6B7280" />
+              <View className="absolute top-2.5 right-3 w-2 h-2 bg-error rounded-full border border-background" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="w-10 h-10 rounded-full bg-surfaceVariant/50 items-center justify-center"
+              onPress={() => setSettingsModalVisible(true)}
+            >
+              <Ionicons name="settings-outline" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          {/* Feature Highlights */}
-          <View className="px-6 py-10 bg-surface/30 rounded-t-[40px] flex-1">
-            <View className="flex-row flex-wrap justify-between mb-10">
-              <View className="w-[48%] bg-surfaceVariant/40 p-5 rounded-3xl mb-4 border border-outline/10">
-                <View className="w-10 h-10 bg-primary/20 rounded-xl items-center justify-center mb-4">
-                  <Ionicons name="game-controller" size={20} color="#FF6B00" />
-                </View>
-                <Text className="text-onSurface font-bold text-sm mb-1">Gamified</Text>
-                <Text className="text-onSurfaceVariant text-[10px] leading-4">Progressive levels and rewarding challenges.</Text>
-              </View>
-              
-              <View className="w-[48%] bg-surfaceVariant/40 p-5 rounded-3xl mb-4 border border-outline/10">
-                <View className="w-10 h-10 bg-info/20 rounded-xl items-center justify-center mb-4">
-                  <Ionicons name="rocket" size={20} color="#4151FF" />
-                </View>
-                <Text className="text-onSurface font-bold text-sm mb-1">Real-time</Text>
-                <Text className="text-onSurfaceVariant text-[10px] leading-4">Instant AI feedback on your prompt quality.</Text>
-              </View>
+        {/* Stats Bar */}
+        <View className="px-5 flex-row mb-8">
+          <StatCard label="Level" value={level.toString()} icon="trophy-outline" color="#FF6B00" />
+          <StatCard label="XP" value={xp.toLocaleString()} icon="flash-outline" color="#4151FF" />
+          <StatCard label="Streak" value={currentStreak.toString()} icon="flame-outline" color="#F59E0B" />
+        </View>
 
-              <View className="w-[48%] bg-surfaceVariant/40 p-5 rounded-3xl border border-outline/10">
-                <View className="w-10 h-10 bg-success/20 rounded-xl items-center justify-center mb-4">
-                  <Ionicons name="trophy" size={20} color="#10B981" />
-                </View>
-                <Text className="text-onSurface font-bold text-sm mb-1">Mastery</Text>
-                <Text className="text-onSurfaceVariant text-[10px] leading-4">Track your growth with XP and skill streaks.</Text>
-              </View>
-
-              <View className="w-[48%] bg-surfaceVariant/40 p-5 rounded-3xl border border-outline/10">
-                <View className="w-10 h-10 bg-accent/20 rounded-xl items-center justify-center mb-4">
-                  <Ionicons name="create" size={20} color="#F59E0B" />
-                </View>
-                <Text className="text-onSurface font-bold text-sm mb-1">Creative</Text>
-                <Text className="text-onSurfaceVariant text-[10px] leading-4">Daily quests to spark your prompt imagination.</Text>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View className="space-y-4 mb-10">
-              <Link href="/(auth)/sign-up" asChild>
-                <TouchableOpacity className="bg-primary py-5 rounded-2xl items-center shadow-lg shadow-primary/30">
-                  <Text className="text-white font-bold text-lg">Get Started Free</Text>
-                </TouchableOpacity>
-              </Link>
-              <Link href="/(auth)/sign-in" asChild>
-                <TouchableOpacity className="bg-transparent py-5 rounded-2xl items-center border border-outline/30">
-                  <Text className="text-onSurface font-bold text-lg">Welcome Back, Sign In</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-            
-            <Text className="text-onSurfaceVariant text-center text-xs opacity-50 mb-10">
-              Join 10,000+ prompt engineers leveling up today.
+        {/* Overall Mastery */}
+        <View className="px-6 mb-10">
+          <View className="flex-row justify-between items-center mb-2.5">
+            <Text className="text-onSurface text-[10px] font-black uppercase tracking-[2px]">Overall Mastery</Text>
+            <Text className="text-onSurfaceVariant text-xs font-black">
+              {overallProgress.current} / {overallProgress.total} XP
             </Text>
           </View>
-        </ScrollView>
-      </SignedOut>
+          <View className="h-2 bg-surfaceVariant rounded-full overflow-hidden">
+            <View className="h-full bg-info rounded-full" style={{ width: `${overallProgress.percentage}%` }} />
+          </View>
+        </View>
+
+        {/* Daily Quest */}
+        {currentQuest && (
+          <View className="px-6">
+            <QuestCard quest={currentQuest} />
+          </View>
+        )}
+
+        {/* Learning Modules Section */}
+        <View className="px-6 pb-20">
+          <View className="flex-row justify-between items-center mb-6">
+            <Text className="text-onSurface text-2xl font-black tracking-tight">Learning Modules</Text>
+            <TouchableOpacity>
+              <Text className="text-primary text-xs font-black uppercase tracking-widest">View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {learningModules?.map((module) => (
+            <ModuleCard key={module.id} {...module} />
+          )) ?? null}
+        </View>
+      </ScrollView>
+
+      {/* Settings Modal */}
+      <Modal
+        visible={settingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+        title="Settings"
+        size="sm"
+      >
+        <View className="space-y-4">
+          <View className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
+            <Ionicons name="person-circle-outline" size={24} color="#6B7280" />
+            <View className="ml-3 flex-1">
+              <Text className="text-onSurface font-semibold">{user?.firstName || "User"} {user?.lastName || ""}</Text>
+              <Text className="text-onSurfaceVariant text-sm">{user?.primaryEmailAddress?.emailAddress}</Text>
+            </View>
+          </View>
+
+          <View className="space-y-2">
+            <TouchableOpacity className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
+              <Ionicons name="notifications-outline" size={20} color="#6B7280" />
+              <Text className="text-onSurface ml-3 flex-1">Notifications</Text>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
+              <Ionicons name="help-circle-outline" size={20} color="#6B7280" />
+              <Text className="text-onSurface ml-3 flex-1">Help & Support</Text>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity className="flex-row items-center p-4 bg-surfaceVariant/50 rounded-xl">
+              <Ionicons name="information-circle-outline" size={20} color="#6B7280" />
+              <Text className="text-onSurface ml-3 flex-1">About</Text>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+
+          <View className="pt-4 border-t border-outline/20">
+            <SignOutButton />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

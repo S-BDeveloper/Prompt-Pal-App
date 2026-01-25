@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
 import { Badge, Card, ProgressBar, ResourceModal } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiClient, LibraryData, LibraryCategory, LearningModule, Resource } from '@/lib/api';
@@ -11,6 +12,7 @@ const { width } = Dimensions.get('window');
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const { isLoaded, isSignedIn } = useAuth();
   const [libraryData, setLibraryData] = useState<LibraryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +21,10 @@ export default function LibraryScreen() {
 
   // Fetch library data from API
   useEffect(() => {
-    fetchLibraryData();
-  }, []);
+    if (isLoaded && isSignedIn) {
+      fetchLibraryData();
+    }
+  }, [isLoaded, isSignedIn]);
 
   const fetchLibraryData = async () => {
     try {
