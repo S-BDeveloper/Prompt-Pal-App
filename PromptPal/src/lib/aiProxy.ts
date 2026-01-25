@@ -3,6 +3,8 @@ import axiosRetry from 'axios-retry';
 import { tokenCache } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { isTextGenerationAllowed, isImageGenerationAllowed } from '@/lib/rateLimiter';
+import { triggerSignOut, tryRefreshToken } from '@/lib/session-manager';
+import { record401Error } from '@/lib/auth-diagnostics';
 
 // Constants
 const AI_PROXY_URL = process.env.EXPO_PUBLIC_AI_PROXY_URL || 'http://localhost:3000';
@@ -63,8 +65,6 @@ aiProxy.interceptors.request.use(async (config) => {
     logger.error('AI Proxy', error, { operation: 'getAuthToken' });
   }
 
-  // Add app identifier
-  config.headers['x-app-id'] = 'prompt-pal';
 
   return config;
 });
@@ -79,26 +79,34 @@ aiProxy.interceptors.response.use(
       // Quota exceeded - could show upgrade prompt
       logger.warn('AI Proxy', 'Quota exceeded', error.response.data);
     } else if (error.response?.status === 401 && !originalRequest._retry) {
-      // Token expired - attempt to refresh
-      logger.warn('AI Proxy', 'Token expired, attempting refresh');
+      // Record this 401 error for diagnostics
+      if (error.config?.url) {
+        record401Error(error.config.url);
+      }
+
+      // Token expired - try to refresh before signing out
+      logger.warn('AI Proxy', 'Authentication failed - attempting token refresh', {
+        url: error.config?.url,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode
+      });
+
+      originalRequest._retry = true;
 
       try {
-        originalRequest._retry = true;
-        
-        // If we have a provider, it should handle the refresh (Clerk does this automatically)
-        if (authTokenProvider) {
-          const freshToken = await authTokenProvider();
-          if (freshToken) {
-            originalRequest.headers.Authorization = `Bearer ${freshToken}`;
-            return aiProxy(originalRequest);
-          }
+        const newToken = await tryRefreshToken();
+        if (newToken) {
+          // Token refreshed successfully, update headers and retry
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return aiProxy(originalRequest);
         }
-        
-        // Fallback or if refresh failed
-        logger.error('AI Proxy', 'No fresh token available after refresh attempt');
       } catch (refreshError) {
-        logger.error('AI Proxy', refreshError as Error);
+        logger.error('AI Proxy', refreshError, { operation: 'tokenRefresh' });
       }
+
+      // Token refresh failed, sign out user
+      logger.warn('AI Proxy', 'Token refresh failed - signing out');
+      await triggerSignOut();
     } else {
       logger.error('AI Proxy', error, {
         status: error.response?.status,
@@ -176,7 +184,6 @@ export class AIProxyClient {
 
     try {
       const response = await aiProxy.post<AIProxyResponse>('/api/ai/proxy', {
-        appId: 'prompt-pal',
         type: 'text',
         input: { prompt: prompt.trim(), context },
       });
@@ -207,7 +214,6 @@ export class AIProxyClient {
 
     try {
       const response = await aiProxy.post<AIProxyResponse>('/api/ai/proxy', {
-        appId: 'prompt-pal',
         type: 'image',
         input: { prompt: prompt.trim(), seed },
       });

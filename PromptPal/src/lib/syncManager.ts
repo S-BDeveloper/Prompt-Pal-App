@@ -11,7 +11,7 @@ const SYNC_RETRY_DELAY_MS = 1000; // 1 second
  */
 export class SyncManager {
   private static syncInProgress = false;
-  private static syncIntervalId: NodeJS.Timeout | null = null;
+  private static syncIntervalId: ReturnType<typeof setTimeout> | null = null;
   private static isOnline = true;
 
   /**

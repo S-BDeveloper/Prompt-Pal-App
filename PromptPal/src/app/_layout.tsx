@@ -2,10 +2,11 @@ import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ClerkProviderWrapper } from '@/lib/clerk';
 import { validateEnvironment } from '@/lib/env';
 import { SyncManager } from '@/lib/syncManager';
-import { AuthTokenSync } from '@/lib/auth-sync';
+import { AuthTokenSync, SessionMonitor } from '@/lib/auth-sync';
 import { logger } from '@/lib/logger';
 import "./global.css";
 
@@ -46,9 +47,12 @@ export default function RootLayout() {
 
   return (
     <ClerkProviderWrapper>
-      <AuthTokenSync />
-      <Slot />
-      <StatusBar style="light" />
+      <SafeAreaProvider>
+        <AuthTokenSync />
+        <SessionMonitor />
+        <Slot />
+        <StatusBar style="light" />
+      </SafeAreaProvider>
     </ClerkProviderWrapper>
   );
 }
