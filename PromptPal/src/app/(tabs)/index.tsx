@@ -13,6 +13,7 @@ import { logger } from '@/lib/logger';
 import { SignOutButton } from '@/components/SignOutButton';
 import { Button, Card, Modal } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
+import { LearningModule, DailyQuest } from '@/lib/api';
 
 // --- Sub-components ---
 
@@ -42,7 +43,7 @@ const StatCard = ({ label, value, icon, color }: { label: string, value: string,
   </View>
 );
 
-const QuestCard = ({ quest }: { quest: any }) => {
+const QuestCard = ({ quest }: { quest: DailyQuest }) => {
   const formatTimeRemaining = (hours: number) => {
     if (hours < 1) {
       return `${Math.floor(hours * 60)}m`;
@@ -82,6 +83,20 @@ const QuestCard = ({ quest }: { quest: any }) => {
   );
 };
 
+interface ModuleCardProps {
+  id: string;
+  title: string;
+  category: string;
+  level: string;
+  topic: string;
+  progress: number;
+  icon: string;
+  thumbnail?: any;
+  accentColor: string;
+  format?: 'interactive' | 'video' | 'text';
+  buttonText?: string;
+}
+
 const ModuleCard = ({ 
   id,
   title, 
@@ -94,7 +109,7 @@ const ModuleCard = ({
   accentColor,
   format,
   buttonText = "Continue Learning"
-}: any) => {
+}: ModuleCardProps) => {
   const router = useRouter();
   
   const handlePress = () => {

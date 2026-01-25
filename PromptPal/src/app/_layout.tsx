@@ -8,6 +8,8 @@ import { validateEnvironment } from '@/lib/env';
 import { SyncManager } from '@/lib/syncManager';
 import { AuthTokenSync, SessionMonitor } from '@/lib/auth-sync';
 import { logger } from '@/lib/logger';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { initializeNetworkListener } from '@/lib/network';
 import "./global.css";
 
 // Validate environment variables on app startup
@@ -18,6 +20,10 @@ export default function RootLayout() {
     // Start background sync when app loads
     SyncManager.startPeriodicSync();
     logger.info('App', 'Started background sync');
+
+    // Initialize network connectivity listener
+    const networkUnsubscribe = initializeNetworkListener();
+    logger.info('App', 'Initialized network listener');
 
     // Sync on app focus and handle online/offline status
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
@@ -30,17 +36,10 @@ export default function RootLayout() {
       }
     });
 
-    // Handle network connectivity changes
-    const networkSubscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      // In a real app, you'd use NetInfo from @react-native-community/netinfo
-      // For now, assume we're online when app is active
-      SyncManager.setOnlineStatus(nextAppState === 'active');
-    });
-
     return () => {
+      networkUnsubscribe?.();
       SyncManager.stopPeriodicSync();
       subscription?.remove();
-      networkSubscription?.remove();
       logger.info('App', 'Stopped background sync');
     };
   }, []);
@@ -48,10 +47,12 @@ export default function RootLayout() {
   return (
     <ClerkProviderWrapper>
       <SafeAreaProvider>
-        <AuthTokenSync />
-        <SessionMonitor />
-        <Slot />
-        <StatusBar style="light" />
+        <ErrorBoundary>
+          <AuthTokenSync />
+          <SessionMonitor />
+          <Slot />
+          <StatusBar style="light" />
+        </ErrorBoundary>
       </SafeAreaProvider>
     </ClerkProviderWrapper>
   );

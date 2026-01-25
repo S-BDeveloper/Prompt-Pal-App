@@ -1,8 +1,10 @@
-import { useGameStore } from '@/features/game/store';
+import { useUserProgressStore } from '@/features/user/store';
 import { logger } from '@/lib/logger';
+import * as SecureStore from 'expo-secure-store';
+import { api, ApiClient } from './api';
+import { SYNC_INTERVAL_MS } from './constants';
 
 // Constants
-const SYNC_INTERVAL_MS = 30000; // 30 seconds
 const MAX_SYNC_RETRIES = 3;
 const SYNC_RETRY_DELAY_MS = 1000; // 1 second
 
@@ -58,12 +60,11 @@ export class SyncManager {
     try {
       this.syncInProgress = true;
 
-      // Get local game state
-      const gameState = useGameStore.getState();
+      // Get local user progress data
+      const userProgress = useUserProgressStore.getState();
 
-      // For now, we'll implement a placeholder sync
-      // In a real implementation, this would call the backend API
-      await this.performSync(gameState);
+      // Sync user progress data with backend
+      await this.performSync(userProgress);
 
       logger.info('SyncManager', 'Progress synced successfully');
 
@@ -81,24 +82,25 @@ export class SyncManager {
    * @param retryCount - Current retry attempt (internal use)
    */
   private static async performSync(
-    gameState: any,
+    userProgress: any,
     retryCount = 0
   ): Promise<void> {
     try {
-      // Placeholder: In a real implementation, this would make an API call
-      // await api.post('/user-progress/sync', gameState);
-
-      // TODO: Replace with actual backend sync API call
-      // await api.post('/user-progress/sync', gameState);
-
-      // Simulate network delay for now (remove in production)
-      await new Promise(resolve => setTimeout(resolve, 500));
-
+      // Sync user progress data to match server schema
+      await ApiClient.updateUserProgressStats({
+        progress: {
+          level: userProgress.level,
+          xp: userProgress.xp,
+          currentStreak: userProgress.currentStreak,
+          longestStreak: userProgress.longestStreak,
+          lastActivityDate: userProgress.lastActivityDate,
+        }
+      });
     } catch (error) {
       if (retryCount < MAX_SYNC_RETRIES) {
         logger.warn('SyncManager', `Sync failed, retrying (${retryCount + 1}/${MAX_SYNC_RETRIES})`);
         await new Promise(resolve => setTimeout(resolve, SYNC_RETRY_DELAY_MS * (retryCount + 1)));
-        return this.performSync(gameState, retryCount + 1);
+        return this.performSync(userProgress, retryCount + 1);
       }
 
       // Mark as offline if sync consistently fails
@@ -151,5 +153,42 @@ export class SyncManager {
     } finally {
       this.syncInProgress = previousSyncState;
     }
+  }
+
+  /**
+   * Queue an action to be processed when online
+   * @param action - The action to queue (endpoint and data)
+   */
+  private static async queueOfflineAction(action: { endpoint: string; data: any }) {
+    const queue = await SecureStore.getItemAsync('offline_queue');
+    const actions = queue ? JSON.parse(queue) : [];
+    actions.push({ ...action, timestamp: Date.now() });
+    await SecureStore.setItemAsync('offline_queue', JSON.stringify(actions));
+  }
+
+  /**
+   * Process all queued offline actions
+   */
+  static async processOfflineQueue() {
+    const queue = await SecureStore.getItemAsync('offline_queue');
+    if (!queue) return;
+    
+    const actions = JSON.parse(queue);
+    for (const action of actions) {
+      try {
+        await api.post(action.endpoint, action.data);
+      } catch (error) {
+        logger.error('SyncManager', error, { operation: 'processOfflineQueue', action });
+      }
+    }
+    await SecureStore.deleteItemAsync('offline_queue');
+  }
+
+  /**
+   * Check if there are offline actions pending
+   */
+  static async hasPendingOfflineActions(): Promise<boolean> {
+    const queue = await SecureStore.getItemAsync('offline_queue');
+    return !!queue;
   }
 }
