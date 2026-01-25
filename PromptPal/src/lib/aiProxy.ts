@@ -118,21 +118,24 @@ aiProxy.interceptors.response.use(
 );
 
 export interface AIProxyRequest {
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'compare';
   model?: string;
   input: {
-    prompt: string;
+    prompt?: string;
     context?: string;
     seed?: number;
     size?: string;
+    targetUrl?: string;
+    resultUrl?: string;
   };
 }
 
 export interface AIProxyResponse {
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'compare';
   model: string;
   result?: string;
   imageUrl?: string;
+  score?: number;
   tokensUsed?: number;
   remaining: {
     textCalls?: number;
@@ -220,6 +223,41 @@ export class AIProxyClient {
       return response.data;
     } catch (error) {
       logger.error('AIProxyClient', error, { operation: 'generateImage', promptLength: prompt.length, hasSeed: !!seed });
+      throw error;
+    }
+  }
+
+  /**
+   * Compares two images using the AI proxy backend
+   * @param targetUrl - URL of the target/reference image
+   * @param resultUrl - URL of the result image to compare
+   * @returns Promise resolving to AI response with similarity score
+   * @throws {Error} If URLs are invalid, rate limited, or API request fails
+   */
+  static async compareImages(targetUrl: string, resultUrl: string): Promise<AIProxyResponse> {
+    if (!targetUrl || !resultUrl) {
+      throw new Error('Both target and result URLs are required');
+    }
+
+    // Validate URLs are proper HTTP/HTTPS URLs
+    try {
+      new URL(targetUrl);
+      new URL(resultUrl);
+    } catch {
+      throw new Error('Invalid URL format');
+    }
+
+    try {
+      const response = await aiProxy.post<AIProxyResponse>('/api/ai/proxy', {
+        type: 'compare',
+        input: {
+          targetUrl,
+          resultUrl
+        },
+      });
+      return response.data;
+    } catch (error) {
+      logger.error('AIProxyClient', error, { operation: 'compareImages', targetUrlLength: targetUrl.length, resultUrlLength: resultUrl.length });
       throw error;
     }
   }

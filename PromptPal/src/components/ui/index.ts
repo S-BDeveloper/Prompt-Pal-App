@@ -7,3 +7,4 @@ export { ProgressBar } from './ProgressBar';
 export { RadarChart } from './RadarChart';
 export { ResultModal } from './ResultModal';
 export { ResourceModal } from './ResourceModal';
+export { Skeleton } from './Skeleton';

@@ -27,6 +27,14 @@ const buildApiUrl = (path: string): string => {
   return `${API_BASE_URL}${normalizedPath}`;
 };
 
+// Helper function for legacy API URLs (without /v1)
+const buildLegacyApiUrl = (path: string): string => {
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const baseUrl = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000') + '/api';
+  return `${baseUrl}${normalizedPath}`;
+};
+
 export const api = axios.create({
   timeout: API_TIMEOUT_MS,
 });
@@ -334,6 +342,31 @@ export class ApiClient {
       await api.put(buildApiUrl(`/user/progress/${levelId}`), progress);
     } catch (error) {
       logger.error('ApiClient', error, { operation: 'updateUserProgress', levelId });
+      throw error;
+    }
+  }
+
+  /**
+   * Update user progress statistics
+   */
+  static async updateUserProgressStats(progressData: {
+    progress: {
+      level: number;
+      xp: number;
+      currentStreak: number;
+      longestStreak: number;
+      lastActivityDate: string | null;
+    }
+  }): Promise<void> {
+    try {
+      // Add appId required by /api/user/progress endpoint
+      const requestData = {
+        appId: 'prompt-pal',
+        ...progressData,
+      };
+      await api.put(buildLegacyApiUrl('/user/progress'), requestData);
+    } catch (error) {
+      logger.error('ApiClient', error, { operation: 'updateUserProgressStats' });
       throw error;
     }
   }
