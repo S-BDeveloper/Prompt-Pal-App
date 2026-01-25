@@ -8,16 +8,16 @@
 
 ## 📊 Work Distribution Overview
 
-| Team Member | Role | Difficulty | Focus Area |
-|-------------|------|------------|------------|
-| **Mikhail** | Lead | 🔴 Hardest | Scoring Services, Backend Integration, Architecture |
-| **Sabina** | Senior | 🟠 2nd Hardest | Game Components, Hint System, Level System |
-| **Yasar** | Mid | 🟡 2nd Easiest | UI Components, Level Content, Progress Tracking |
-| **Khalid** | Junior | 🟢 Easiest | Content Creation, Polish, Assets |
+| Team Member | Focus Area |
+|-------------|------------|
+| **Mikhail** | Scoring Services, Backend Integration, Architecture |
+| **Sabina** | Game Components, Hint System, Level System |
+| **Yasar** | UI Components, Level Content, Progress Tracking |
+| **Khalid** | Content Creation, Polish, Assets |
 
 ---
 
-## 🔴 MIKHAIL - Lead Developer (Hardest Tasks)
+## MIKHAIL
 
 ### Focus: Scoring Services & Backend Integration
 
@@ -137,7 +137,7 @@ interface CopyScoringResult {
 
 ---
 
-## 🟠 SABINA - Senior Developer (2nd Hardest)
+## SABINA
 
 ### Focus: Game Components & Hint System
 
@@ -258,7 +258,7 @@ class NanoAssistant {
 
 ---
 
-## 🟡 YASAR - Mid Developer (2nd Easiest)
+## YASAR
 
 ### Focus: UI Components & Level System
 
@@ -400,7 +400,7 @@ interface LevelProgress {
 
 ---
 
-## 🟢 KHALID - Junior Developer (Easiest Tasks)
+## KHALID
 
 ### Focus: Content Creation, Polish & Assets
 
