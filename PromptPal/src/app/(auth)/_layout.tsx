@@ -3,7 +3,11 @@ import { useAuth } from '@clerk/clerk-expo'
 import { View, Text, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-export default function AuthRoutesLayout() {
+/**
+ * Inner auth layout that uses Clerk authentication.
+ * Only rendered when Clerk is configured.
+ */
+function AuthRoutesLayoutInner() {
   const { isSignedIn, isLoaded } = useAuth()
 
   if (isSignedIn) {
@@ -38,4 +42,27 @@ export default function AuthRoutesLayout() {
       <Stack.Screen name="sign-up" />
     </Stack>
   )
+}
+
+/**
+ * Auth layout wrapper that only uses Clerk when configured.
+ * When Clerk is not configured, allows access to auth routes (for development).
+ */
+export default function AuthRoutesLayout() {
+  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const isClerkConfigured = publishableKey && publishableKey !== 'your_clerk_publishable_key_here';
+  
+  // If Clerk is not configured, allow access to auth routes without checking authentication
+  if (!isClerkConfigured) {
+    return (
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right'
+        }}
+      />
+    );
+  }
+  
+  return <AuthRoutesLayoutInner />;
 }

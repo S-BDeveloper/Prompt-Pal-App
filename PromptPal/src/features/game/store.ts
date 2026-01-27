@@ -1,15 +1,17 @@
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
-import * as SecureStore from 'expo-secure-store';
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import * as SecureStore from "expo-secure-store";
 
 export type ChallengeType = 'image' | 'code' | 'copywriting';
 
 export interface Level {
   id: string;
-  moduleId: string;
-  type: ChallengeType;
-  title: string;
+  moduleId?: string;
+  type?: ChallengeType;
+  title?: string;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
+  targetImageUrl?: string;
+  hiddenPromptKeywords?: string[];
   passingScore: number;
   unlocked: boolean;
   
@@ -60,29 +62,48 @@ const initialState = {
   lives: 3,
   score: 0,
   isPlaying: false,
-  unlockedLevels: ['level_01'], // First level always unlocked
+  unlockedLevels: ["level_01"], // First level always unlocked
   completedLevels: [],
 };
 
-// Custom storage adapter for expo-secure-store
+// Custom storage adapter for expo-secure-store (native) or localStorage (web)
 const secureStorage = {
   getItem: async (name: string): Promise<string | null> => {
     try {
-      return await SecureStore.getItemAsync(name);
+      // Use SecureStore on native, localStorage on web
+      if (typeof window !== "undefined") {
+        // Web platform
+        return window.localStorage.getItem(name);
+      } else {
+        // Native platform
+        return await SecureStore.getItemAsync(name);
+      }
     } catch {
       return null;
     }
   },
   setItem: async (name: string, value: string): Promise<void> => {
     try {
-      await SecureStore.setItemAsync(name, value);
+      if (typeof window !== "undefined") {
+        // Web platform
+        window.localStorage.setItem(name, value);
+      } else {
+        // Native platform
+        await SecureStore.setItemAsync(name, value);
+      }
     } catch {
       // Handle error silently
     }
   },
   removeItem: async (name: string): Promise<void> => {
     try {
-      await SecureStore.deleteItemAsync(name);
+      if (typeof window !== "undefined") {
+        // Web platform
+        window.localStorage.removeItem(name);
+      } else {
+        // Native platform
+        await SecureStore.deleteItemAsync(name);
+      }
     } catch {
       // Handle error silently
     }
@@ -95,10 +116,11 @@ export const useGameStore = create<GameState>()(
       ...initialState,
 
       startLevel: (levelId: string) => {
+        // Don't reset lives - preserve them across level attempts
+        // Only reset score for the new level
         set({
           currentLevelId: levelId,
           isPlaying: true,
-          lives: 3, // Reset lives when starting a level
           score: 0,
         });
       },
@@ -112,15 +134,18 @@ export const useGameStore = create<GameState>()(
 
       loseLife: () => {
         const currentLives = get().lives;
-        if (currentLives > 1) {
-          set({ lives: currentLives - 1 });
-        } else {
-          // Game over - reset
-          set({
-            lives: 3,
-            currentLevelId: null,
-            isPlaying: false,
-          });
+        if (currentLives > 0) {
+          const newLives = currentLives - 1;
+          set({ lives: newLives });
+          
+          // If lives reach 0, end the current level but don't reset lives
+          // This allows the level select to show locked state
+          if (newLives === 0) {
+            set({
+              currentLevelId: null,
+              isPlaying: false,
+            });
+          }
         }
       },
 
@@ -147,15 +172,32 @@ export const useGameStore = create<GameState>()(
       },
     }),
     {
-      name: 'promptpal-game-storage',
+      name: "promptpal-game-storage",
       storage: createJSONStorage(() => secureStorage),
       // Add error handling for corrupted storage
       onRehydrateStorage: () => (state, error) => {
         if (error) {
-          console.warn('Game store rehydration error:', error);
+          console.warn("Game store rehydration error:", error);
+          return initialState;
         }
-        // If state is undefined or corrupted, it will use initial state automatically
+        // If state is undefined or corrupted, reset to initial state
+        if (!state || typeof state !== "object") {
+          console.warn("Game store corrupted, resetting to initial state");
+          return initialState;
+        }
+        return state;
       },
+      // Skip rehydration to prevent blocking render
+      skipHydration: true,
+      // Add timeout for rehydration to prevent blocking
+      partialize: (state) => ({
+        unlockedLevels: state.unlockedLevels,
+        completedLevels: state.completedLevels,
+        currentLevelId: state.currentLevelId,
+        lives: state.lives,
+        score: state.score,
+        isPlaying: state.isPlaying,
+      }),
     }
   )
 );

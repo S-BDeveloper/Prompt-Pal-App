@@ -1,29 +1,78 @@
-import React from 'react';
-import { View, Text } from 'react-native';
-import { logger } from '@/lib/logger';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 
-interface Props { children: React.ReactNode; fallback?: React.ReactNode; }
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
 
-export class ErrorBoundary extends React.Component<Props, { hasError: boolean }> {
-  state = { hasError: false };
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
 
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true };
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error('ErrorBoundary', error, errorInfo);
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('Error stack:', error.stack);
+    console.error('Error info:', errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-error text-lg font-bold mb-4">Something went wrong</Text>
-          <Text className="text-onSurfaceVariant text-center">Please restart the app</Text>
+        <View style={styles.container}>
+          <Text style={styles.title}>Something went wrong</Text>
+          <ScrollView style={styles.scrollView}>
+            <Text style={styles.errorText}>
+              {this.state.error?.message || 'Unknown error'}
+            </Text>
+            {this.state.error?.stack && (
+              <Text style={styles.stackText}>{this.state.error.stack}</Text>
+            )}
+          </ScrollView>
         </View>
       );
     }
+
     return this.props.children;
   }
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#121212',
+    padding: 20,
+    justifyContent: 'center',
+  },
+  title: {
+    color: '#CF6679',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  scrollView: {
+    maxHeight: 400,
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  stackText: {
+    color: '#999',
+    fontSize: 12,
+    fontFamily: 'monospace',
+  },
+});

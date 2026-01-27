@@ -1,498 +1,304 @@
-import axios from 'axios';
-import axiosRetry from 'axios-retry';
-import { tokenCache } from '@/lib/auth';
-import { logger } from '@/lib/logger';
-import { triggerSignOut, tryRefreshToken } from '@/lib/session-manager';
-import { record401Error } from '@/lib/auth-diagnostics';
-
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000') + '/api/v1';
-const API_TIMEOUT_MS = 10000; // 10 seconds for regular API calls
-
-// Type for token provider
-type TokenProvider = () => Promise<string | null>;
-let authTokenProvider: TokenProvider | null = null;
-
 /**
- * Sets the token provider for the API client.
- * This should be called from a React component using useAuth().
+ * API Client for connecting to Strapi backend
+ * Handles all communication with the prompt-pal-api
  */
-export const setTokenProvider = (provider: TokenProvider) => {
-  authTokenProvider = provider;
-};
 
-// Helper function to construct full API URLs
-const buildApiUrl = (path: string): string => {
-  // Ensure path starts with /
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE_URL}${normalizedPath}`;
-};
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:1337";
 
-// Helper function for legacy API URLs (without /v1)
-const buildLegacyApiUrl = (path: string): string => {
-  // Ensure path starts with /
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const baseUrl = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000') + '/api';
-  return `${baseUrl}${normalizedPath}`;
-};
-
-export const api = axios.create({
-  timeout: API_TIMEOUT_MS,
-});
-
-// Configure retry logic with exponential backoff
-axiosRetry(api, {
-  retries: 3,
-  retryDelay: axiosRetry.exponentialDelay,
-  retryCondition: (error) => {
-    // Retry on network errors, 5xx server errors, but not on 4xx client errors (except 429)
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
-           (error.response?.status && error.response.status >= 500) ||
-           error.response?.status === 429;
-  },
-  onRetry: (retryCount, error, requestConfig) => {
-    logger.warn('API', `Request failed, retrying (${retryCount}/3)`, {
-      url: requestConfig.url,
-      status: error.response?.status,
-    });
-  },
-});
-
-// Request interceptor for JWT token
-api.interceptors.request.use(async (config) => {
-  try {
-    let token = null;
-    if (authTokenProvider) {
-      token = await authTokenProvider();
-    } else {
-      // Fallback to cache if provider not set (e.g. during early initialization)
-      token = await tokenCache.getToken('__clerk_client_jwt');
-    }
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  } catch (error) {
-    logger.error('API', error, { operation: 'getAuthToken' });
-  }
-
-  return config;
-});
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      // Record this 401 error for diagnostics
-      if (error.config?.url) {
-        record401Error(error.config.url);
-      }
-
-      // Token expired - try to refresh before signing out
-      logger.warn('API', 'Authentication failed - attempting token refresh', {
-        url: error.config?.url,
-        status: error.response?.status,
-        errorCode: error.response?.data?.errorCode
-      });
-
-      originalRequest._retry = true;
-
-      try {
-        const newToken = await tryRefreshToken();
-        if (newToken) {
-          // Token refreshed successfully, update headers and retry
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        logger.error('API', refreshError, { operation: 'tokenRefresh' });
-      }
-
-      // Token refresh failed, sign out user
-      logger.warn('API', 'Token refresh failed - signing out');
-      await triggerSignOut();
-    } else {
-      logger.error('API', error, {
-        status: error.response?.status,
-        url: error.config?.url,
-      });
-    }
-    return Promise.reject(error);
-  }
+// Log API configuration on module load
+console.log("[API Client] Initialized with base URL:", API_BASE_URL);
+console.log(
+  "[API Client] Environment variable EXPO_PUBLIC_API_URL:",
+  process.env.EXPO_PUBLIC_API_URL || "not set (using default)"
 );
 
-// Types
-export type ChallengeType = 'image' | 'code' | 'copywriting';
-export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
-
-export interface Level {
-  id: string;
-  type: ChallengeType;
-  title: string;
-  difficulty: Difficulty;
-  passingScore: number;
-  unlocked: boolean;
-
-  // Image Challenge specific
-  targetImageUrl?: string;
-  hiddenPromptKeywords?: string[];
-  style?: string;
-
-  // Code/Logic Challenge specific
-  moduleTitle?: string;
-  requirementBrief?: string;
-  requirementImage?: string;
-  language?: string;
-  testCases?: { id: string; name: string; passed: boolean }[];
-
-  // Copywriting Challenge specific
-  briefTitle?: string;
-  briefProduct?: string;
-  briefTarget?: string;
-  briefTone?: string;
-  briefGoal?: string;
-  metrics?: { label: string; value: number }[];
-
-  // Common metadata
-  hints?: string[];
-  estimatedTime?: number;
-  points?: number;
-  tags?: string[];
-  learningObjectives?: string[];
-  prerequisites?: string[];
+export interface ApiError {
+  error: string;
+  details?: string;
+  status?: number;
 }
 
-export interface UserProgress {
-  levelId: string;
-  isUnlocked: boolean;
-  isCompleted: boolean;
-  bestScore: number;
-  attempts: number;
-  timeSpent: number;
-  completedAt?: string;
-  hintsUsed: number;
-  firstAttemptScore: number;
-}
-
-export interface LeaderboardUser {
+export interface Task {
   id: string;
-  rank: number;
+  documentId?: string;
   name: string;
-  points: string;
-  level?: number;
-  title?: string;
-  avatar: string;
-  isCurrentUser?: boolean;
-}
-
-export interface UserStatistics {
-  totalXp: number;
-  currentLevel: number;
-  currentStreak: number;
-  longestStreak: number;
-  lastActivityDate: string | null;
-  globalRank: number;
-  points: number;
-}
-
-export interface LearningModule {
-  id: string;
-  category: string;
-  title: string;
-  level: string;
-  topic: string;
-  progress: number;
-  icon: string;
-  thumbnail?: any;
-  accentColor: string;
-  buttonText: string;
-  type?: 'module' | 'course';
-  format?: 'interactive' | 'video' | 'text';
-  estimatedTime?: number;
-}
-
-export interface Resource {
-  id: string;
-  type: 'guide' | 'cheatsheet' | 'lexicon' | 'case-study';
-  title: string;
-  description: string;
-  icon?: string;
-  estimatedTime?: number;
-  content?: any;
-}
-
-export interface LibraryCategory {
-  category: string;
-  modules: LearningModule[];
-  resources: Resource[];
-}
-
-export interface LibraryData {
-  userSummary: {
-    totalXp: number;
-    currentLevel: number;
-    streak: number;
-    completedLevels: number;
+  question: string;
+  idealPrompt?: string;
+  Image?: {
+    url: string;
+    formats?: {
+      thumbnail?: { url: string };
+      small?: { url: string };
+      medium?: { url: string };
+      large?: { url: string };
+    };
   };
-  categories: LibraryCategory[];
+  Day?: number;
 }
 
-export interface DailyQuest {
-  id: string;
-  title: string;
-  description: string;
-  xpReward: number;
-  timeRemaining: number;
-  completed: boolean;
-  expiresAt: number;
+export interface TaskResponse {
+  data: Task[];
 }
 
-export interface ApiResponse<T> {
+export interface SingleTaskResponse {
+  data: Task;
+}
+
+export interface ImageGenerationResponse {
   success: boolean;
-  data: T;
-  message?: string;
+  imageUrl: string;
+  prompt: string;
 }
 
-// API Client Class
-export class ApiClient {
-  /**
-   * Fetch all library data (modules + resources + user summary)
-   */
-  static async getLibraryData(): Promise<LibraryData> {
-    try {
-      const response = await api.get<ApiResponse<LibraryData>>(buildApiUrl('/library'));
-      return response.data.data;
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getLibraryData' });
-      throw error;
-    }
+export interface ImageEvaluationResponse {
+  success: boolean;
+  evaluation: {
+    score: number;
+    feedback?: string;
+    criteria?: Array<{
+      name: string;
+      score: number;
+      feedback: string;
+    }>;
+  };
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  username?: string;
+  externalId?: string;
+}
+
+export interface UserResponse {
+  success: boolean;
+  data: User;
+}
+
+export interface SubmissionResponse {
+  success: boolean;
+  submissionId?: string;
+}
+
+export interface SubquestionResult {
+  subquestionId: string;
+  score: number;
+}
+
+export interface CriterionResult {
+  criterionId: string;
+  score: number;
+  subquestionResults: SubquestionResult[];
+}
+
+export interface TaskResult {
+  taskId: string;
+  score: number;
+  criterionResults: CriterionResult[];
+}
+
+export interface UserResultsResponse {
+  score: number | null;
+  taskResults: TaskResult[];
+}
+
+class ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = API_BASE_URL) {
+    this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
   }
 
-  /**
-   * Fetch all levels from the backend
-   */
-  static async getLevels(): Promise<Level[]> {
-    try {
-      const response = await api.get<{ levels: Level[]; count: number }>(buildApiUrl('/levels'));
-      // Handle both formats: { success: true, data: Level[] } or { levels: Level[], count: number }
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data.levels;
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getLevels' });
-      throw error;
-    }
-  }
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
 
-  /**
-   * Fetch levels by type/category
-   */
-  static async getLevelsByType(type: ChallengeType): Promise<Level[]> {
-    try {
-      const response = await api.get<{ levels: Level[]; count: number }>(buildApiUrl(`/levels?type=${type}`));
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data.levels;
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getLevelsByType', type });
-      throw error;
+    console.log(`[API] ${options.method || "GET"} ${url}`);
+    if (options.body) {
+      console.log(`[API] Request body:`, JSON.parse(options.body as string));
     }
-  }
 
-  /**
-   * Fetch a specific level by ID
-   */
-  static async getLevelById(id: string): Promise<Level | null> {
+    const defaultHeaders: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    };
+
     try {
-      const response = await api.get<{ level: Level }>(buildApiUrl(`/levels/${id}`));
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data.level;
-    } catch (error) {
-      if (error.response?.status === 404) {
-        return null;
+      const startTime = Date.now();
+      const response = await fetch(url, config);
+      const duration = Date.now() - startTime;
+      const data = await response.json();
+
+      console.log(`[API] Response (${duration}ms):`, {
+        status: response.status,
+        ok: response.ok,
+        data: response.ok ? data : { error: data.error, details: data.details },
+      });
+
+      if (!response.ok) {
+        const error: ApiError = {
+          error: data.error || "An error occurred",
+          details: data.details,
+          status: response.status,
+        };
+        console.error(`[API] Request failed:`, error);
+        throw error;
       }
-      logger.error('ApiClient', error, { operation: 'getLevelById', id });
-      throw error;
-    }
-  }
 
-  /**
-   * Fetch user progress for all levels
-   */
-  static async getUserProgress(): Promise<Record<string, UserProgress>> {
-    try {
-      const response = await api.get<{ progress: UserProgress[]; count: number }>(buildApiUrl('/user/progress'));
-      const progressArray = (response.data as any).data || response.data.progress || [];
-      // Convert array to object keyed by levelId
-      return progressArray.reduce((acc: Record<string, UserProgress>, progress: UserProgress) => {
-        acc[progress.levelId] = progress;
-        return acc;
-      }, {} as Record<string, UserProgress>);
+      return data;
     } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getUserProgress' });
-      throw error;
-    }
-  }
-
-  /**
-   * Update user progress for a specific level
-   */
-  static async updateUserProgress(levelId: string, progress: Partial<UserProgress>): Promise<void> {
-    try {
-      await api.put(buildApiUrl(`/user/progress/${levelId}`), progress);
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'updateUserProgress', levelId });
-      throw error;
-    }
-  }
-
-  /**
-   * Update user progress statistics
-   */
-  static async updateUserProgressStats(progressData: {
-    progress: {
-      level: number;
-      xp: number;
-      currentStreak: number;
-      longestStreak: number;
-      lastActivityDate: string | null;
-    }
-  }): Promise<void> {
-    try {
-      // Add appId required by /api/user/progress endpoint
-      const requestData = {
-        appId: 'prompt-pal',
-        ...progressData,
-      };
-      await api.put(buildLegacyApiUrl('/user/progress'), requestData);
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'updateUserProgressStats' });
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch leaderboard data
-   */
-  static async getLeaderboard(limit: number = 50): Promise<LeaderboardUser[]> {
-    try {
-      const response = await api.get<{ leaderboard: LeaderboardUser[]; continueCursor: string }>(buildApiUrl(`/leaderboard?limit=${limit}`));
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data.leaderboard;
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getLeaderboard', limit });
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch user's rank and surrounding players
-   */
-  static async getUserRank(): Promise<{ user: LeaderboardUser; nearby: LeaderboardUser[] }> {
-    try {
-      const response = await api.get<{ user: LeaderboardUser; nearby: LeaderboardUser[] }>(buildApiUrl('/user/rank'));
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data;
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getUserRank' });
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch user statistics
-   */
-  static async getUserStatistics(): Promise<UserStatistics> {
-    try {
-      const response = await api.get<{ statistics: UserStatistics }>(buildApiUrl('/user/statistics'));
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data.statistics;
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getUserStatistics' });
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch learning modules
-   */
-  static async getLearningModules(): Promise<LearningModule[]> {
-    try {
-      const response = await api.get<{ modules: LearningModule[]; count: number }>(buildApiUrl('/learning-modules'));
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data.modules || [];
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'getLearningModules' });
-      return [];
-    }
-  }
-
-  /**
-   * Update learning module progress
-   */
-  static async updateModuleProgress(moduleId: string, progress: number): Promise<void> {
-    try {
-      await api.put(buildApiUrl(`/user/modules/${moduleId}`), { progress });
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'updateModuleProgress', moduleId });
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch current daily quest
-   */
-  static async getCurrentQuest(): Promise<DailyQuest | null> {
-    try {
-      const response = await api.get<{ quest: DailyQuest | null }>(buildApiUrl('/user/quest'));
-      if ((response.data as any).data) return (response.data as any).data;
-      return response.data.quest;
-    } catch (error) {
-      if (error.response?.status === 404 || error.response?.status === 500) {
-        return null;
+      console.error(`[API] Network/Request error:`, error);
+      if (error && typeof error === "object" && "error" in error) {
+        throw error;
       }
-      logger.error('ApiClient', error, { operation: 'getCurrentQuest' });
-      throw error;
+      throw {
+        error: "Network error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      } as ApiError;
     }
   }
 
-  /**
-   * Complete current daily quest
-   */
-  static async completeQuest(): Promise<void> {
-    try {
-      await api.post(buildApiUrl('/user/quest/complete'));
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'completeQuest' });
-      throw error;
-    }
+  // Task endpoints
+  async getDailyTasks(): Promise<Task[]> {
+    const response = await this.request<TaskResponse>(
+      "/api/analyzer/daily-tasks"
+    );
+    return response.data || [];
   }
 
-  /**
-   * Sync all user data with backend
-   */
-  static async syncUserData(): Promise<{
-    progress: Record<string, UserProgress>;
-    statistics: UserStatistics;
-    modules: LearningModule[];
-    quest: DailyQuest | null;
-  }> {
-    try {
-      const response = await api.get<any>(buildApiUrl('/user/sync'));
-      const data = response.data.data || response.data;
-      
-      return {
-        progress: (data.levelProgress || []).reduce((acc: any, p: any) => {
-          acc[p.levelId] = p;
-          return acc;
-        }, {}),
-        statistics: data.statistics,
-        modules: data.moduleProgress || [],
-        quest: data.activeQuests?.[0] || null,
-      };
-    } catch (error) {
-      logger.error('ApiClient', error, { operation: 'syncUserData' });
-      throw error;
-    }
+  async getTaskById(taskId: string): Promise<Task> {
+    const response = await this.request<SingleTaskResponse>(
+      `/api/analyzer/tasks/${taskId}`
+    );
+    return response.data;
+  }
+
+  async getUserTasks(userId: string): Promise<Task[]> {
+    const response = await this.request<TaskResponse>(
+      `/api/analyzer/users/${userId}/tasks`
+    );
+    return response.data || [];
+  }
+
+  async getUserImageTasks(userId: string): Promise<Task[]> {
+    const response = await this.request<TaskResponse>(
+      `/api/analyzer/users/${userId}/image-tasks`
+    );
+    return response.data || [];
+  }
+
+  // Image generation and evaluation
+  async generateImage(prompt: string): Promise<string> {
+    const response = await this.request<ImageGenerationResponse>(
+      "/api/analyzer/generate-image",
+      {
+        method: "POST",
+        body: JSON.stringify({ prompt }),
+      }
+    );
+    return response.imageUrl;
+  }
+
+  async evaluateImageComparison(
+    taskId: string,
+    userImageUrl: string,
+    expectedImageUrl: string
+  ): Promise<ImageEvaluationResponse["evaluation"]> {
+    const response = await this.request<ImageEvaluationResponse>(
+      "/api/analyzer/evaluate-images",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          taskId,
+          userImageUrl,
+          expectedImageUrl,
+        }),
+      }
+    );
+    return response.evaluation;
+  }
+
+  // User management
+  async createUser(
+    email: string,
+    name: string,
+    externalId?: string
+  ): Promise<User> {
+    const response = await this.request<{ id: string; success: boolean }>(
+      "/api/analyzer/users/create",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, name, externalId }),
+      }
+    );
+    // Fetch the created user
+    return this.getUserById(response.id);
+  }
+
+  async getUserById(userId: string): Promise<User> {
+    const response = await this.request<UserResponse>(
+      `/api/analyzer/users/${userId}`
+    );
+    return response.data;
+  }
+
+  async getUserByExternalId(externalId: string): Promise<User> {
+    const response = await this.request<UserResponse>(
+      `/api/analyzer/users/external/${externalId}`
+    );
+    return response.data;
+  }
+
+  // Submission endpoints
+  async submitSolution(
+    userId: string,
+    taskId: string,
+    solutionPrompt: string
+  ): Promise<void> {
+    await this.request(`/api/analyzer/users/${userId}/submit`, {
+      method: "POST",
+      body: JSON.stringify({
+        taskId,
+        solutionPrompt,
+      }),
+    });
+  }
+
+  async checkSubmission(submissionId: string): Promise<void> {
+    return this.request(`/api/analyzer/submissions/${submissionId}/check`);
+  }
+
+  // User results and progress
+  async getUserResults(userId: string): Promise<UserResultsResponse> {
+    return this.request<UserResultsResponse>(
+      `/api/analyzer/users/${userId}/results`
+    );
+  }
+
+  async getUserStreak(userId: string): Promise<number> {
+    const response = await this.request<{ success: boolean; data: number }>(
+      `/api/analyzer/users/${userId}/streak`
+    );
+    return response.data;
+  }
+
+  async getCompletedTasks(userId: string): Promise<Task[]> {
+    const response = await this.request<{ success: boolean; data: Task[] }>(
+      `/api/analyzer/users/${userId}/completed-tasks`
+    );
+    return response.data || [];
   }
 }
+
+// Export singleton instance
+export const apiClient = new ApiClient();

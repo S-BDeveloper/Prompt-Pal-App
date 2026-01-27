@@ -12,10 +12,12 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { initializeNetworkListener } from '@/lib/network';
 import "./global.css";
 
-// Validate environment variables on app startup
-validateEnvironment();
-
 export default function RootLayout() {
+  // Validate environment variables on app startup (non-blocking in development)
+  useEffect(() => {
+    validateEnvironment();
+  }, []);
+
   useEffect(() => {
     // Start background sync when app loads
     SyncManager.startPeriodicSync();
