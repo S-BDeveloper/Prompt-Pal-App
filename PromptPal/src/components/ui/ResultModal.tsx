@@ -14,6 +14,8 @@ interface ResultModalProps {
   visible: boolean;
   score: number;
   xp: number;
+  /** Whether the user passed the challenge (default true). When false, shows "Challenge Failed" and Try Again styling. */
+  passed?: boolean;
   /** Optional module type so we can tailor labels/layout */
   moduleType?: ModuleType;
   /** Detailed test results for code challenges */
@@ -27,12 +29,19 @@ interface ResultModalProps {
   onClose: () => void;
   /** Optional share callback, falls back to native Share if not provided */
   onShare?: () => void;
+  /** Image challenge: similarity score 0–100 from scoring service */
+  imageSimilarity?: number;
+  /** Image challenge: feedback strings from scoring service */
+  imageFeedback?: string[];
+  /** Image challenge: keywords matched from scoring service */
+  keywordsMatched?: string[];
 }
 
 export function ResultModal({
   visible,
   score,
   xp,
+  passed = true,
   moduleType,
   testCases,
   copyMetrics,
@@ -41,6 +50,9 @@ export function ResultModal({
   onNext,
   onClose,
   onShare,
+  imageSimilarity,
+  imageFeedback,
+  keywordsMatched,
 }: ResultModalProps) {
   const subtitleLabel =
     moduleType === 'image'
@@ -49,7 +61,8 @@ export function ResultModal({
         ? 'COPY SCORE'
         : 'LOGIC VALIDATION';
 
-  const primaryButtonLabel = primaryLabel || 'Next Challenge →';
+  const primaryButtonLabel =
+    primaryLabel || (passed ? 'Next Challenge →' : 'Try Again');
 
   const handleShare = async () => {
     try {
@@ -91,18 +104,66 @@ export function ResultModal({
             
             <View className="flex-row items-center justify-between w-full mb-4">
               <View className="flex-row items-center">
-                <View className="w-12 h-12 bg-success/20 rounded-2xl items-center justify-center mr-3 shadow-lg shadow-success/20">
-                  <Text className="text-success text-2xl font-black">✓</Text>
+                <View
+                  className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 shadow-lg ${
+                    passed ? 'bg-success/20 shadow-success/20' : 'bg-error/20 shadow-error/20'
+                  }`}
+                >
+                  <Text
+                    className={`text-2xl font-black ${passed ? 'text-success' : 'text-error'}`}
+                  >
+                    {passed ? '✓' : '✕'}
+                  </Text>
                 </View>
                 <View>
-                  <Text className="text-onSurface text-2xl font-black tracking-tight">Challenge Passed!</Text>
+                  <Text className="text-onSurface text-2xl font-black tracking-tight">
+                    {passed ? 'Challenge Passed!' : 'Challenge Failed'}
+                  </Text>
                   <Text className="text-onSurfaceVariant text-[10px] uppercase tracking-[3px] font-black">
                     {subtitleLabel}: {score}%
                   </Text>
                 </View>
               </View>
-              <Text className="text-success text-3xl font-black tracking-tighter">+{xp} XP</Text>
+              {passed && (
+                <Text className="text-success text-3xl font-black tracking-tighter">
+                  +{xp} XP
+                </Text>
+              )}
             </View>
+
+            {/* Image challenge: similarity, feedback, keywords */}
+            {moduleType === 'image' && (imageFeedback?.length || keywordsMatched?.length) && (
+              <Card className="w-full bg-surfaceVariant/50 border-0 p-6 mb-6 rounded-[32px]">
+                <Text className="text-onSurface text-xs font-black uppercase tracking-[2px] mb-3">
+                  Score breakdown
+                </Text>
+                {imageSimilarity != null && (
+                  <Text className="text-onSurfaceVariant text-sm mb-2">
+                    Visual similarity: <Text className="text-onSurface font-bold">{imageSimilarity}%</Text>
+                  </Text>
+                )}
+                {keywordsMatched && keywordsMatched.length > 0 && (
+                  <View className="mb-2">
+                    <Text className="text-onSurfaceVariant text-[10px] font-black uppercase tracking-widest mb-1">
+                      Keywords captured
+                    </Text>
+                    <Text className="text-onSurface text-sm">{keywordsMatched.join(', ')}</Text>
+                  </View>
+                )}
+                {imageFeedback && imageFeedback.length > 0 && (
+                  <View>
+                    <Text className="text-onSurfaceVariant text-[10px] font-black uppercase tracking-widest mb-1">
+                      Feedback
+                    </Text>
+                    {imageFeedback.map((line, i) => (
+                      <Text key={i} className="text-onSurface text-sm mb-0.5">
+                        • {line}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+              </Card>
+            )}
 
             {/* Code challenge test results (and any scenario providing testCases) */}
             {testCases && testCases.length > 0 && (
