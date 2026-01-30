@@ -61,6 +61,9 @@ aiProxy.interceptors.request.use(async (config) => {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Add app ID header required for authentication
+    config.headers['x-app-id'] = 'prompt-pal';
   } catch (error) {
     logger.error('AI Proxy', error, { operation: 'getAuthToken' });
   }
@@ -216,9 +219,10 @@ export class AIProxyClient {
     }
 
     try {
-      const response = await aiProxy.post<AIProxyResponse>('/api/analyzer/ai-proxy', {
+      const response = await aiProxy.post<AIProxyResponse>('/api/ai/proxy', {
         type: 'image',
         input: { prompt: prompt.trim(), seed },
+        appId: 'prompt-pal',
       });
       return response.data;
     } catch (error) {
@@ -248,7 +252,7 @@ export class AIProxyClient {
     }
 
     try {
-      const response = await aiProxy.post<AIProxyResponse>('/api/analyzer/ai-proxy', {
+      const response = await aiProxy.post<AIProxyResponse>('/api/ai/proxy', {
         type: 'compare',
         input: {
           targetUrl,
