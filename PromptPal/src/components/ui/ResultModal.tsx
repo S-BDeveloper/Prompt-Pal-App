@@ -2,7 +2,16 @@ import React from 'react';
 import { View, Text, Modal, TouchableOpacity, Share } from 'react-native';
 import { Button, Card, RadarChart } from './index';
 
-type ModuleType = 'image' | 'code' | 'copywriting';
+export type ModuleType = 'image' | 'code' | 'copywriting';
+
+/** S3: Returns subtitle label for ResultModal by module type (for unit tests). */
+export function getResultModalSubtitleLabel(moduleType?: ModuleType): string {
+  return moduleType === 'image'
+    ? 'SIMILARITY SCORE'
+    : moduleType === 'copywriting'
+      ? 'COPY SCORE'
+      : 'LOGIC VALIDATION';
+}
 
 interface TestCaseResult {
   name: string;
@@ -54,12 +63,7 @@ export function ResultModal({
   imageFeedback,
   keywordsMatched,
 }: ResultModalProps) {
-  const subtitleLabel =
-    moduleType === 'image'
-      ? 'SIMILARITY SCORE'
-      : moduleType === 'copywriting'
-        ? 'COPY SCORE'
-        : 'LOGIC VALIDATION';
+  const subtitleLabel = getResultModalSubtitleLabel(moduleType);
 
   const primaryButtonLabel =
     primaryLabel || (passed ? 'Next Challenge →' : 'Try Again');
